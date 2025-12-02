@@ -25,6 +25,7 @@ $(BOOT): $(KERNEL)
 	@sudo cp ./grub/grubx64.efi ./uefi_fat_mnt/EFI/BOOT/BOOTX64.EFI
 	@sudo cp ./grub/*.mod ./uefi_fat_mnt/EFI/ubuntu/x86_64-efi/
 	@sudo cp ./$(KERNEL) ./uefi_fat_mnt/kernel
+	@sudo cp ./cdrom.iso ./uefi_fat_mnt/cdrom.iso
 	@sudo umount ./uefi_fat_mnt
 	@rmdir ./uefi_fat_mnt
 
@@ -33,7 +34,7 @@ CFLAGS += -mcmodel=small -Wall -Wno-builtin-declaration-mismatch -O2 -fno-pie -m
 LDFLAGS = -nostdlib -melf_x86_64
 
 KERNEL_OBJS = kernel_entry.o # Do not reorder
-KERNEL_OBJS += kernel.o kernel_asm.o apic.o ascii_font.o fb.o printf.o
+KERNEL_OBJS += kernel.o kernel_asm.o apic.o ascii_font.o fb.o printf.o iso9660.o
 
 $(KERNEL): $(KERNEL_OBJS)
 	$(LD) $(LDFLAGS) -T ./kernel.lds $^ -o $@

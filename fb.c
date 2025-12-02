@@ -32,7 +32,7 @@ void fb_init(unsigned int *fb, unsigned int width, unsigned int height)
 	size_t i, num = (size_t) width * height;
 	const char *__hello_statement = HELLO_STATEMENT;
 
-	/* Clean up the screen */
+
 	for (i = 0; i < num; i++) {
 		fb[i] = 0x00000000U;
 	}
@@ -44,12 +44,11 @@ void fb_init(unsigned int *fb, unsigned int width, unsigned int height)
 	MaxX = width / FONT_WIDTH;
 	MaxY = (height - FB_STATUS_BOX) / FONT_HEIGHT;
 
-	/* Print a hello statement */
+
 	for (i = 0; i < sizeof(HELLO_STATEMENT)-1; i++) {
 		fb_output(__hello_statement[i]);
 	}
 
-	/* Draw the status box */
 	for (i = 0; i < width; i++) {
 		fb[(height - FB_STATUS_BOX + 1) * width + i] = 0xFFFFFFFFU;
 		fb[(height - 2) * width + i] = 0xFFFFFFFFU;
@@ -76,7 +75,7 @@ void fb_status_update(unsigned int task_id)
 
 	curr = StatusCurr[task_id];
 
-	/* Clean up the previous box. */
+
 	if (curr >= StatusStart[task_id] + FB_STATUS_WIDTH) {
 		for (j = StatusY; j < StatusY + FB_STATUS_HEIGHT; j++) {
 			for (i = curr - FB_STATUS_WIDTH; i < curr; i++) {
@@ -85,7 +84,6 @@ void fb_status_update(unsigned int task_id)
 		}
 	}
 
-	/* Draw a new box. */
 	if (curr + FB_STATUS_WIDTH > StatusEnd[task_id])
 		curr = StatusStart[task_id];
 
@@ -99,7 +97,7 @@ void fb_status_update(unsigned int task_id)
 
 static void fb_scrollup(void)
 {
-	/* Move the text up one row */
+
 	size_t cur = 0, count = Width * ((MaxY - 1) * FONT_HEIGHT);
 	size_t row = Width * FONT_HEIGHT;
 	do {
@@ -107,7 +105,6 @@ static void fb_scrollup(void)
 		cur++;
 	} while (--count != 0);
 
-	/* Clean up the last row */
 	do {
 		Fb[cur] = 0x00000000U;
 		cur++;
@@ -118,9 +115,9 @@ void fb_output(char ch)
 {
 	size_t cur;
 	unsigned char *ptr;
-	if ((signed char) ch <= 0) { /* not in the ASCII subset */
+	if ((signed char) ch <= 0) { 
 		if (ch == 0) return;
-		ch = '?'; /* an unknown character */
+		ch = '?'; 
 	}
 	if (ch == '\n' || PosX == MaxX) {
 		PosX = 0;
@@ -135,11 +132,11 @@ void fb_output(char ch)
 	ptr = &__ascii_font[(unsigned char) ch * (FONT_WIDTH * FONT_HEIGHT / 8)];
 	cur = (size_t) PosX * FONT_WIDTH + (PosY * FONT_HEIGHT) * Width;
 	for (size_t j = 0; j < FONT_HEIGHT; j++) {
-		/* for simplicity, assume that FONT_WIDTH=8, i.e., fits in one byte */
+	
 		signed char bitmap = ptr[j];
 		for (size_t i = 0; i < FONT_WIDTH; i++) {
-			signed char color = (bitmap >> 7); /* propagate the sign bit */
-			Fb[cur + i] = (signed int) color; /* sign extend to 32 bits */
+			signed char color = (bitmap >> 7);
+			Fb[cur + i] = (signed int) color;
 			bitmap <<= 1;
 		}
 		cur += Width;

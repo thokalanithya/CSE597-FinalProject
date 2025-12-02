@@ -9,6 +9,7 @@
 #include <apic.h>
 #include <printf.h>
 #include <kernel.h>
+#include "iso9660.h"
 #define PG_BYTES          4096ULL
 #define PT_ENTRIES        512ULL
 #define PT_RW_PRESENT     0x3ULL   
@@ -18,6 +19,35 @@ extern void task_init(void *tcb, void *entry, void *stack_top);
 extern void task_start(void *tcb);
 
 void timer_apic_handler(void);
+
+static void find_iso_module(uint32_t mb_addr, uint32_t *mod_start, uint32_t *mod_size)
+{
+    struct multiboot_tag *tag;
+
+    // multiboot info begins with total_size + reserved (8 bytes)
+    tag = (struct multiboot_tag *)(mb_addr + 8);
+
+    while (tag->type != MULTIBOOT_TAG_TYPE_END) {
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_MODULE) {
+            struct multiboot_tag_module *m = (struct multiboot_tag_module *)tag;
+
+            *mod_start = m->mod_start;
+            *mod_size  = m->mod_end - m->mod_start;
+
+            printf("ISO module detected: start=%x size=%u\n",
+                   *mod_start, *mod_size);
+
+            return;
+        }
+
+        // move to next tag (8-byte aligned)
+        tag = (struct multiboot_tag *)(((uintptr_t)tag + tag->size + 7) & ~7ULL);
+    }
+
+    printf("No ISO module found.\n");
+}
+
 
 static inline void *page_align(void *base)
 {
@@ -248,10 +278,35 @@ void init_apic_timer(void)
 
 }
 
+static void demo_shell()
+{
+    printf("\nMiniOS> ls\n");
+    iso9660_list_root();
+
+    printf("\nMiniOS> cat HELLO.TXT\n");
+    iso9660_read_file("HELLO.TXT");
+
+    printf("\nMiniOS> cat TEST.TXT\n");
+    iso9660_read_file("TEST.TXT");
+}
+
 
 void kernel_start(struct multiboot_info *info, void *free_mem_base)
 {
 	fb_init(find_fb(info), 800, 600);
+
+    uint32_t iso_start = 0;
+    uint32_t iso_size  = 0;
+
+    find_iso_module((uint32_t)info, &iso_start, &iso_size);
+
+    iso9660_init(iso_start, iso_size);
+    // iso9660_list_root();
+
+    // iso9660_read_file("HELLO.TXT");
+    demo_shell();
+
+
 	idt_init();
     void *freemem = free_mem_base;               
 	uint64_t pml4_phys = build_identity_4g_tables(&freemem);

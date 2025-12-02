@@ -50,7 +50,6 @@ x86_lapic_read_id(void)
 static inline void
 x86_x2apic_barrier(void)
 {
-	/* Seems we need *both* mfence and lfence per Intel (10.12.3) */
 	__asm__ __volatile("mfence; lfence" :::
 					   "memory");
 }
@@ -82,7 +81,7 @@ x86_lapic_write_icr(uint32_t cmd)
 	}
 	*(volatile uint32_t *) (lapic_base + (X86_LAPIC_ICR << 4)) = cmd;
 	while ((*(volatile uint32_t *) (lapic_base + (X86_LAPIC_ICR << 4)))
-				& 0x1000U) ; /* Wait until the command is completed. */
+				& 0x1000U) ;
 }
 
 void
@@ -94,12 +93,12 @@ x86_lapic_enable(void)
 
 	cpuid(1, &eax, &ebx, &ecx, &edx);
 
-	if (!(edx & (1U << 9))) { /* No APIC. */
+	if (!(edx & (1U << 9))) {
 		lapic_base = NULL;
 		return;
 	}
 
-	if (((eax >> 8) & 0x0FU) < 6) { /* CPU family: before P6. */
+	if (((eax >> 8) & 0x0FU) < 6) {
 		lapic_base = (void *) 0xFEE00000;
 	} else {
 		if ((ecx & (1U << 21)) != 0)
@@ -124,13 +123,11 @@ x86_lapic_enable(void)
 		printf("APIC enabled, base: %p\n", lapic_base);
 	}
 
-	/* Set the spurious-interrupt vector register: enable=1, vector=0xFF. */
 	x86_lapic_write(X86_LAPIC_SVR, 0xFF | (0x1U << 8));
 
-	/* Enable the flat model (N/A for x2APIC) .*/
+
 	if (!x2apic)
 		x86_lapic_write(X86_LAPIC_DFR, 0xFFFFFFFFU);
 
-	/* Reset the task priority register */
 	x86_lapic_write(X86_LAPIC_TPR, 0x00U);
 }
