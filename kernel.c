@@ -165,7 +165,6 @@ typedef struct task_frame {
 volatile task_frame_t *curr_task = NULL;
 
 static task_frame_t *g_tasks[2] = { NULL, NULL };
-static void         *g_stacks[2] = { NULL, NULL };
 static unsigned      g_curr_idx  = 0;
 
 static inline void *alloc_page(void **freep) {
@@ -221,23 +220,6 @@ void timer_apic_handler(void)
     x86_lapic_write(X86_LAPIC_EOI, 0);
 }
 
-static void task0(void) {
-    size_t iters = 0;
-    for (;;) {
-        if ((++iters % 500000000ULL) == 0ULL) {
-            fb_status_update(0);
-        }
-    }
-}
-
-static void task1(void) {
-    size_t iters = 0;
-    for (;;) {
-        if ((++iters % 500000000ULL) == 0ULL) {
-            fb_status_update(1);
-        }
-    }
-}
 
 
 /* Multiboot2 header */
@@ -313,24 +295,6 @@ void kernel_start(struct multiboot_info *info, void *free_mem_base)
 	write_cr3(pml4_phys);
 
 	printf("Paging on. PML4 is at address %llu.\n", (unsigned long long)pml4_phys);
-
-	init_apic_timer();
-
-    g_tasks[0] = (task_frame_t *) alloc_page(&freemem);
-    g_tasks[1] = (task_frame_t *) alloc_page(&freemem);
-
-    g_stacks[0] = alloc_page(&freemem);
-    g_stacks[1] = alloc_page(&freemem);
-
-    void *stk0_top = (void *)((uintptr_t)g_stacks[0] + 4096ULL);
-    void *stk1_top = (void *)((uintptr_t)g_stacks[1] + 4096ULL);
-
-    task_init((void*)g_tasks[0], (void*)task0, stk0_top);
-    task_init((void*)g_tasks[1], (void*)task1, stk1_top);
-
-    g_curr_idx = 0;
-	curr_task  = g_tasks[g_curr_idx];
-    task_start((void*)g_tasks[g_curr_idx]);
 
 
 	while (1) {} /* Never return! */
