@@ -265,11 +265,16 @@ static void demo_shell()
     printf("\nMiniOS> ls\n");
     iso9660_list_root();
 
-    printf("\nMiniOS> cat HELLO.TXT\n");
-    iso9660_read_file("HELLO.TXT");
+    printf("\nMiniOS> ls DIR1\n");
+    iso9660_list_path("DIR1");
 
-    printf("\nMiniOS> cat TEST.TXT\n");
-    iso9660_read_file("TEST.TXT");
+    // printf("DEBUG: lba=%u size=%u flags=%x\n",
+    //    rec->extent_lba_le,
+    //    rec->data_length_le,
+    //    rec->flags);
+
+    printf("\nMiniOS> cat DIR1/A.TXT\n");
+    iso9660_read_file("DIR1/A.TXT");
 }
 
 

@@ -31,6 +31,8 @@ void fb_init(unsigned int *fb, unsigned int width, unsigned int height)
 	Width = width;
 	PosX = 0;
 	PosY = 0;
+	MaxX = width / FONT_WIDTH;
+	MaxY = height / FONT_HEIGHT;
 
 	for (i = 0; i < sizeof(HELLO_STATEMENT)-1; i++) {
 		fb_output(__hello_statement[i]);
