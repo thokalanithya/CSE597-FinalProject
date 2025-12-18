@@ -20,6 +20,158 @@ extern void task_start(void *tcb);
 
 void timer_apic_handler(void);
 
+#define SHELL_MAX_LINE 128
+
+/* ================= Keyboard Input ================= */
+
+static inline uint8_t inb(uint16_t port)
+{
+    uint8_t ret;
+    __asm__ __volatile__ ("inb %1, %0"
+                          : "=a"(ret)
+                          : "Nd"(port));
+    return ret;
+}
+
+/* Minimal US QWERTY scancode map */
+static const char scancode_map[128] = {
+    0,  27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b',
+    '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',
+    0,  'a','s','d','f','g','h','j','k','l',';','\'','`',
+    0, '\\','z','x','c','v','b','n','m',',','.','/',
+    0, '*',0, ' '
+};
+
+static char keyboard_getchar(void)
+{
+    static uint8_t last_scancode = 0;
+    uint8_t scancode;
+
+    while (1) {
+        scancode = inb(0x60);
+
+        /* Ignore key releases */
+        if (scancode & 0x80) {
+            last_scancode = 0;
+            continue;
+        }
+
+        /* Ignore repeats */
+        if (scancode == last_scancode)
+            continue;
+
+        last_scancode = scancode;
+
+        char c = scancode_map[scancode];
+        if (c)
+            return c;
+    }
+}
+
+/* ================= String Utilities ================= */
+
+static int strcmp(const char *a, const char *b)
+{
+    while (*a && (*a == *b)) {
+        a++;
+        b++;
+    }
+    return (unsigned char)*a - (unsigned char)*b;
+}
+
+static void read_line(char *buf, int max)
+{
+    int i = 0;
+    char c;
+
+    while (i < max - 1) {
+        c = keyboard_getchar();
+        if (c == '\n' || c == '\r') {
+            printf("\n");
+            break;
+        }
+        if (c == '\b' && i > 0) {
+            i--;
+            printf("\b \b");
+            continue;
+        }
+        buf[i++] = c;
+        printf("%c", c);
+    }
+    buf[i] = '\0';
+}
+
+static int split_args(char *line, char *argv[], int max)
+{
+    int argc = 0;
+
+    while (*line && argc < max) {
+        while (*line == ' ') line++;
+        if (!*line) break;
+
+        argv[argc++] = line;
+
+        while (*line && *line != ' ')
+            line++;
+
+        if (*line)
+            *line++ = '\0';
+    }
+    return argc;
+}
+
+static void execute_command(int argc, char *argv[])
+{
+    if (argc == 0)
+        return;
+
+    if (!strcmp(argv[0], "ls")) {
+        if (argc == 1)
+            iso9660_list_root();
+        else
+            iso9660_list_path(argv[1]);
+        return;
+    }
+
+    if (!strcmp(argv[0], "cat")) {
+        if (argc < 2) {
+            printf("usage: cat <file>\n");
+            return;
+        }
+        iso9660_read_file(argv[1]);
+        return;
+    }
+
+    if (!strcmp(argv[0], "help")) {
+        printf("Commands:\n");
+        printf("  ls [dir]\n");
+        printf("  cat <file>\n");
+        printf("  help\n");
+        printf("  exit\n");
+        return;
+    }
+
+    if (!strcmp(argv[0], "exit")) {
+        printf("Shell exited.\n");
+        while (1);
+    }
+
+    printf("Unknown command: %s\n", argv[0]);
+}
+
+void shell_loop(void)
+{
+    char line[SHELL_MAX_LINE];
+    char *argv[8];
+
+    while (1) {
+        printf("\nMiniOS> ");
+        read_line(line, sizeof(line));
+        int argc = split_args(line, argv, 8);
+        execute_command(argc, argv);
+    }
+}
+
 static void find_iso_module(uint32_t mb_addr, uint32_t *mod_start, uint32_t *mod_size)
 {
     struct multiboot_tag *tag;
@@ -260,22 +412,23 @@ void init_apic_timer(void)
 
 }
 
-static void demo_shell()
-{
-    printf("\nMiniOS> ls\n");
-    iso9660_list_root();
+// static void demo_shell()
+// {
+//     printf("\nMiniOS> ls\n");
+//     iso9660_list_root();
 
-    printf("\nMiniOS> ls DIR1\n");
-    iso9660_list_path("DIR1");
+//     printf("\nMiniOS> ls DIR1\n");
+//     iso9660_list_path("DIR1");
 
-    // printf("DEBUG: lba=%u size=%u flags=%x\n",
-    //    rec->extent_lba_le,
-    //    rec->data_length_le,
-    //    rec->flags);
+//     printf("\nMiniOS> cat DIR1/A.TXT\n");
+//     iso9660_read_file("DIR1/A.TXT");
 
-    printf("\nMiniOS> cat DIR1/A.TXT\n");
-    iso9660_read_file("DIR1/A.TXT");
-}
+//     printf("\nMiniOS> ls DIR1/love\n");
+//     iso9660_list_path("DIR1/love");
+
+//     printf("\nMiniOS> cat DIR1/love/hey.TXT\n");
+//     iso9660_read_file("DIR1/love/hey.TXT");
+// }
 
 
 void kernel_start(struct multiboot_info *info, void *free_mem_base)
@@ -291,7 +444,8 @@ void kernel_start(struct multiboot_info *info, void *free_mem_base)
     // iso9660_list_root();
 
     // iso9660_read_file("HELLO.TXT");
-    demo_shell();
+    // demo_shell();
+    shell_loop();
 
 
 	idt_init();

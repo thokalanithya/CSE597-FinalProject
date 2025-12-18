@@ -49,6 +49,8 @@ void iso9660_init(uint32_t base, uint32_t size)
     ISO_SIZE = size;
 
     printf("ISO9660: initialized at %x (size %u)\n", ISO_BASE, ISO_SIZE);
+    uint8_t *iso = (uint8_t *)ISO_BASE;
+    printf("[DBG] ISO ID = %.5s\n", &iso[16 * 2048 + 1]);
 }
 
 static void clean_filename(const char *name, int len, char *out)
