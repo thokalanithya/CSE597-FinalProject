@@ -12,7 +12,10 @@ all: $(BOOT)
 run: $(BOOT)
 	@qemu-system-x86_64 -m 512 --bios $(OVMF) -drive format=raw,file=$(BOOT)
 
-$(BOOT): $(KERNEL)
+cdrom.iso:
+	genisoimage -o cdrom.iso iso_root
+
+$(BOOT): $(KERNEL) cdrom.iso
 	@if [ -d ./uefi_fat_mnt ]; then sudo umount -q ./uefi_fat_mnt || true; fi
 	@if [ -d ./uefi_fat_mnt ]; then rmdir ./uefi_fat_mnt; fi
 	@mkdir ./uefi_fat_mnt
